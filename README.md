@@ -1,4 +1,4 @@
-📦 Resumen del Proyecto: Clickmarket
+📦 Resumen del Proyecto:
 Clickmarket es una aplicación web de gestión de inventario diseñada para pequeñas y medianas empresas. Permite administrar productos, controlar niveles de stock, gestionar categorías y usuarios, y generar reportes, todo a través de una interfaz moderna y amigable.
 
 🛠️ Tecnologías Utilizadas (Stack Tecnológico)
