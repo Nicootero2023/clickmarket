@@ -77,17 +77,22 @@ $categorias = $stmt->fetchAll();
             </div>
         </div>
         <div class="user-menu">
-            <span class="user-info">usuario</span>
-            <button class="btn btn-outline" onclick="abrirModalUsuarios()" style="background-color: #17a2b8; color: white; border: none;">
+            <span class="user-info"><?php echo htmlspecialchars($_SESSION['usuario_nombre'] ?? 'usuario'); ?></span>
+            
+            <button class="btn btn-primary" onclick="abrirModalUsuarios()">
                 👥 Gestionar Usuarios
             </button>
-            <button class="btn btn-outline" onclick="abrirModalCategorias()" style="background-color: #6c757d; color: white; border: none;">
+            
+            <button class="btn btn-primary" onclick="abrirModalCategorias()">
                 📁 Gestionar Categorías
             </button>
-            <a href="generar_reporte.php" class="btn btn-outline" style="background-color: #28a745; color: white; border: none;">
+            
+            <a href="generar_reporte.php" class="btn btn-primary">
                 📊 Generar Reporte
             </a>
+            
             <button class="btn btn-primary" onclick="mostrarModalAgregar()">+ Agregar Producto</button>
+            
             <a href="logout.php" class="btn btn-outline">Cerrar Sesion</a>
         </div>
     </div>
