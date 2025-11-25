@@ -41,7 +41,12 @@ if ($_POST) {
             } else {
                 // Insertar nuevo usuario
                 $stmt = $pdo->prepare("INSERT INTO usuarios (usuario, contrasena, nombre_completo, email) VALUES (?, ?, ?, ?)");
-                $stmt->execute([$usuario, $contrasena, $nombre_completo, $email]);
+   // Encriptar contraseña
+$passwordHash = password_hash($contrasena, PASSWORD_DEFAULT);
+
+// Insertar nuevo usuario con el hash
+$stmt = $pdo->prepare("INSERT INTO usuarios (usuario, contrasena, nombre_completo, email) VALUES (?, ?, ?, ?)");
+$stmt->execute([$usuario, $passwordHash, $nombre_completo, $email]);
                 
                 $success = 'Registro exitoso. Redirigiendo al login...';
                 header("refresh:2;url=login.php");

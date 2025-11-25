@@ -100,7 +100,7 @@ echo "\xEF\xBB\xBF";
                 <th class="col-stock">Stock</th>
                 <th class="col-categoria">Categoria</th>
                 <th class="col-estado">Estado</th>
-                <th class="col-fecha">Fecha de Creacionn</th>
+                <th class="col-fecha">Fecha de Creacion</th>
             </tr>
         </thead>
         <tbody>
