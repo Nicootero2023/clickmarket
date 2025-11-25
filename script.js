@@ -131,7 +131,7 @@ function mostrarNotificacion(mensaje, tipo) {
     const notificacion = document.createElement('div');
     notificacion.style.cssText = `
         position: fixed;
-        top: 20px;
+        bottom: 20px;
         right: 20px;
         padding: 1rem 1.5rem;
         border-radius: 8px;
