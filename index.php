@@ -5,49 +5,58 @@ verificarLogin();
 // Obtener estadísticas del dashboard
 $stats = obtenerEstadisticas();
 
-// Obtener y procesar parámetros de filtrado
 $busqueda = $_GET['busqueda'] ?? '';
 $categoria = $_GET['categoria'] ?? '';
 $estado_stock = $_GET['estado_stock'] ?? '';
 
+// Configuración de paginación
+$registrosPorPagina = 10; // Cantidad de productos a mostrar
+$paginaActual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
+if ($paginaActual < 1) $paginaActual = 1;
+$inicio = ($paginaActual - 1) * $registrosPorPagina;
+
 // Inicializar conexión a la base de datos
 $pdo = conectarDB();
 
-// Construir consulta SQL base con join a categorías
-$sql = "SELECT p.*, c.nombre as categoria_nombre FROM productos p 
-        LEFT JOIN categorias c ON p.categoria_id = c.id 
-        WHERE 1=1";
+// 1. Construir condiciones de filtro (Base común para contar y buscar)
+$condiciones = "WHERE 1=1";
 $params = [];
 
-// Agregar filtros a la consulta SQL si están presentes
 if (!empty($busqueda)) {
-    $sql .= " AND (p.nombre LIKE ? OR p.codigo LIKE ?)";
+    $condiciones .= " AND (p.nombre LIKE ? OR p.codigo LIKE ?)";
     $params[] = "%$busqueda%";
     $params[] = "%$busqueda%";
 }
 
 if (!empty($categoria)) {
-    $sql .= " AND p.categoria_id = ?";
+    $condiciones .= " AND p.categoria_id = ?";
     $params[] = $categoria;
 }
 
-// Aplicar filtros por estado de stock
 if (!empty($estado_stock)) {
     switch ($estado_stock) {
-        case 'en_stock':
-            $sql .= " AND p.stock >= 5";
-            break;
-        case 'stock_bajo':
-            $sql .= " AND p.stock > 0 AND p.stock < 5";
-            break;
-        case 'sin_stock':
-            $sql .= " AND p.stock = 0";
-            break;
+        case 'en_stock': $condiciones .= " AND p.stock >= 5"; break;
+        case 'stock_bajo': $condiciones .= " AND p.stock > 0 AND p.stock < 5"; break;
+        case 'sin_stock': $condiciones .= " AND p.stock = 0"; break;
     }
 }
 
-// Ordenar resultados por código
-$sql .= " ORDER BY p.codigo";
+// 2. PRIMERA CONSULTA: Contar el total de resultados (para saber cuántas páginas hay)
+$sqlTotal = "SELECT COUNT(*) as total FROM productos p $condiciones";
+$stmtTotal = $pdo->prepare($sqlTotal);
+$stmtTotal->execute($params);
+$totalRegistros = $stmtTotal->fetch()['total'];
+
+// Calcular total de páginas (redondear hacia arriba)
+$totalPaginas = ceil($totalRegistros / $registrosPorPagina);
+
+// 3. SEGUNDA CONSULTA: Obtener SOLO los productos de esta página
+// Agregamos el LIMIT al final
+$sql = "SELECT p.*, c.nombre as categoria_nombre FROM productos p 
+        LEFT JOIN categorias c ON p.categoria_id = c.id 
+        $condiciones 
+        ORDER BY p.codigo 
+        LIMIT $inicio, $registrosPorPagina";
 
 // Ejecutar consulta y obtener productos
 $stmt = $pdo->prepare($sql);
@@ -200,6 +209,41 @@ $categorias = $stmt->fetchAll();
                         <?php endif; ?>
                     </tbody>
                 </table>
+                <?php if ($totalPaginas > 1): ?>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #eee;">
+                <div style="color: #666; font-size: 0.9rem;">
+                    Página <strong><?php echo $paginaActual; ?></strong> de <strong><?php echo $totalPaginas; ?></strong>
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem;">
+                    <?php if ($paginaActual > 1): ?>
+                        <a href="?pagina=<?php echo $paginaActual - 1; ?>&busqueda=<?php echo urlencode($busqueda); ?>&categoria=<?php echo $categoria; ?>&estado_stock=<?php echo $estado_stock; ?>" 
+                           class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.9rem;">
+                           ← Anterior
+                        </a>
+                    <?php endif; ?>
+
+                    <?php for($i = 1; $i <= $totalPaginas; $i++): ?>
+                        <?php if ($i == $paginaActual || $i == 1 || $i == $totalPaginas || ($i >= $paginaActual - 1 && $i <= $paginaActual + 1)): ?>
+                            <a href="?pagina=<?php echo $i; ?>&busqueda=<?php echo urlencode($busqueda); ?>&categoria=<?php echo $categoria; ?>&estado_stock=<?php echo $estado_stock; ?>" 
+                               class="btn <?php echo $i == $paginaActual ? 'btn-primary' : 'btn-outline'; ?>" 
+                               style="padding: 0.4rem 0.8rem; font-size: 0.9rem; <?php echo $i == $paginaActual ? 'background: #667eea; border-color: #667eea;' : ''; ?>">
+                               <?php echo $i; ?>
+                            </a>
+                        <?php elseif ($i == $paginaActual - 2 || $i == $paginaActual + 2): ?>
+                            <span style="padding: 0.4rem; color: #999;">...</span>
+                        <?php endif; ?>
+                    <?php endfor; ?>
+
+                    <?php if ($paginaActual < $totalPaginas): ?>
+                        <a href="?pagina=<?php echo $paginaActual + 1; ?>&busqueda=<?php echo urlencode($busqueda); ?>&categoria=<?php echo $categoria; ?>&estado_stock=<?php echo $estado_stock; ?>" 
+                           class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.9rem;">
+                           Siguiente →
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
             </div>
         </div>
     </div>
