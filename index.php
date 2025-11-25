@@ -75,25 +75,29 @@ $categorias = $stmt->fetchAll();
                 Clickmarket
                 <div class="subtitle">Gestion de inventario de productos</div>
             </div>
-        </div>
-        <div class="user-menu">
+        </div>  
+          <div class="user-menu">
             <span class="user-info"><?php echo htmlspecialchars($_SESSION['usuario_nombre'] ?? 'usuario'); ?></span>
             
             <button class="btn btn-primary" onclick="abrirModalUsuarios()">
-                👥 Gestionar Usuarios
+                👥 Usuarios
             </button>
             
             <button class="btn btn-primary" onclick="abrirModalCategorias()">
-                📁 Gestionar Categorías
+                📁 Categorías
             </button>
             
             <a href="generar_reporte.php" class="btn btn-primary">
-                📊 Generar Reporte
+                📊 Reporte
             </a>
             
-            <button class="btn btn-primary" onclick="mostrarModalAgregar()">+ Agregar Producto</button>
+            <button class="btn btn-primary" onclick="mostrarModalAgregar()">
+                + Producto
+            </button>
             
-            <a href="logout.php" class="btn btn-outline">Cerrar Sesion</a>
+            <a href="logout.php" class="btn btn-outline">
+                Salir
+            </a>
         </div>
     </div>
     <div class="container">

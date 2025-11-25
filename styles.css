@@ -546,3 +546,38 @@ body {
 .mb-1 { margin-bottom: 1rem; }
 .mb-2 { margin-bottom: 2rem; }
 .hidden { display: none; }
+
+.user-menu {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Espacio entre botones */
+}
+
+/* Estilo unificado para los botones violetas */
+.user-menu .btn-primary {
+    width: 140px;            /* Ancho más razonable (antes era 210px) */
+    height: 38px;            /* Altura fija */
+    justify-content: center; /* Centrar texto e icono */
+    padding: 0 0.5rem;
+    font-size: 0.85rem;      /* Letra un poco más compacta */
+    white-space: nowrap;     /* Evita que el texto salte de línea */
+}
+
+/* Ajuste específico para el botón de salir */
+.user-menu .btn-outline {
+    height: 38px;
+    padding: 0 1rem;
+    display: flex;
+    align-items: center;
+}
+
+/* Responsive: Si la pantalla es muy chica, permitir que bajen */
+@media (max-width: 1200px) {
+    .header {
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .user-menu {
+        margin-left: auto;
+    }
+}
