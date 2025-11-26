@@ -85,13 +85,14 @@ $categorias = $stmt->fetchAll();
                 <div class="subtitle">Gestion de inventario de productos</div>
             </div>
         </div>  
-          <div class="user-menu">
+         <div class="user-menu">
             <span class="user-info"><?php echo htmlspecialchars($_SESSION['usuario_nombre'] ?? 'usuario'); ?></span>
             
-            <button class="btn btn-primary" onclick="abrirModalUsuarios()">
-                👥 Usuarios
-            </button>
-            
+            <?php if (isset($_SESSION['usuario_rol']) && $_SESSION['usuario_rol'] === 'admin'): ?>
+                <button class="btn btn-primary" onclick="abrirModalUsuarios()">
+                    👥 Usuarios
+                </button>
+            <?php endif; ?>
             <button class="btn btn-primary" onclick="abrirModalCategorias()">
                 📁 Categorías
             </button>

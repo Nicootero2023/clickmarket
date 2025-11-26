@@ -2,6 +2,17 @@
 require_once 'config.php';
 verificarLogin();
 
+verificarLogin();
+
+// --- SEGURIDAD: Verificar si es administrador ---
+if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'admin') {
+    echo json_encode([
+        'success' => false,
+        'error' => 'Acceso denegado. No tienes permisos de administrador.'
+    ]);
+    exit;
+}
+
 header('Content-Type: application/json');
 
 $pdo = conectarDB();
