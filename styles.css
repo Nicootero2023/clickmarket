@@ -72,7 +72,25 @@ body {
 .user-menu {
     display: flex;
     align-items: center;
-    gap: 10px; /* Espacio entre botones */
+    gap: 10px;
+}
+
+/* Afecta a los botones violetas (Usuarios, Categorías, Reporte, Producto) */
+.user-menu .btn-primary {
+    width: 135px !important;      
+    min-width: 135px;             
+    max-width: 135px;             
+    
+    height: 40px;                 
+    padding: 0 5px;               
+    
+    display: inline-flex;         
+    justify-content: center;      
+    align-items: center;         
+    
+    font-size: 0.85rem;          
+    white-space: nowrap;         
+    overflow: hidden;             
 }
 
 /* Texto con información del usuario */
