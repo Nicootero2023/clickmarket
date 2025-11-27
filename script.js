@@ -1,39 +1,53 @@
-// Funciones para manejo de modales
-// Función para mostrar un modal específico
+// ============================================================================
+// GESTIÓN DE MODALES - Funciones para mostrar, cerrar y manipular modales
+// ============================================================================
+
+/**
+ * Muestra un modal agregando la clase 'active'
+ * @param {string} id - ID del modal a mostrar
+ */
 function mostrarModal(id) {
     document.getElementById(id).classList.add('active');
 }
 
-// Función para cerrar un modal y limpiar su formulario
+/**
+ * Cierra un modal y limpia su formulario asociado
+ * @param {string} id - ID del modal a cerrar
+ */
 function cerrarModal(id) {
     document.getElementById(id).classList.remove('active');
-    // Limpiar formularios cuando se cierre
+    // Limpiar formularios cuando se cierre el modal
     const form = document.querySelector(`#${id} form`);
     if (form) {
         form.reset();
     }
 }
 
-// Abre el modal para agregar un nuevo producto
+/**
+ * Abre el modal para agregar un nuevo producto
+ */
 function mostrarModalAgregar() {
     mostrarModal('modalAgregar');
 }
 
-// Carga y muestra los datos de un producto en el modal de edición
+/**
+ * Carga los datos de un producto y abre el modal de edición
+ * @param {number} id - ID del producto a editar
+ */
 function editarProducto(id) {
-    // Hacer petición AJAX para obtener los datos del producto
+    // Realizar solicitud AJAX para obtener los datos del producto
     fetch(`obtener_producto.php?id=${id}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Llenar el formulario con los datos
+                // Llenar el formulario con los datos obtenidos
                 document.getElementById('editarId').value = data.producto.id;
                 document.getElementById('editarNombre').value = data.producto.nombre;
                 document.getElementById('editarPrecio').value = data.producto.precio;
                 document.getElementById('editarStock').value = data.producto.stock;
                 document.getElementById('editarCategoria').value = data.producto.categoria_id;
                 
-                // Mostrar modal
+                // Mostrar modal de edición
                 mostrarModal('modalEditar');
             } else {
                 alert('Error al cargar los datos del producto');
@@ -45,22 +59,29 @@ function editarProducto(id) {
         });
 }
 
-// Muestra el modal de confirmación para eliminar un producto
+/**
+ * Muestra el modal de confirmación para eliminar un producto
+ * @param {number} id - ID del producto a eliminar
+ * @param {string} nombre - Nombre del producto a eliminar
+ */
 function confirmarEliminar(id, nombre) {
     document.getElementById('eliminarId').value = id;
     document.getElementById('nombreEliminar').textContent = nombre;
     mostrarModal('modalEliminar');
 }
 
-// Eventos del DOM para el manejo de modales
-// Cerrar modal al hacer clic fuera de él
+// ============================================================================
+// EVENTOS DE MODALES - Manejo de interacciones con los modales
+// ============================================================================
+
+// Cerrar modal al hacer clic fuera de él (en el fondo oscuro)
 document.addEventListener('click', function(e) {
     if (e.target.classList.contains('modal')) {
         e.target.classList.remove('active');
     }
 });
 
-// Cerrar modales con la tecla ESC
+// Cerrar todos los modales activos al presionar la tecla ESC
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         const modales = document.querySelectorAll('.modal.active');
@@ -70,13 +91,17 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// Validación de formularios y eventos cuando el DOM está listo
+// ============================================================================
+// VALIDACIÓN DE FORMULARIOS - Se ejecuta cuando el DOM está listo
+// ============================================================================
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Formatear números en inputs de precio
+    // --- Validar campos de PRECIO ---
+    // Solo permitir números y un punto decimal
     const inputsPrecios = document.querySelectorAll('input[name="precio"]');
     inputsPrecios.forEach(input => {
         input.addEventListener('input', function(e) {
-            // Permitir solo números y punto decimal
+            // Remover caracteres que no sean números o punto
             let value = e.target.value.replace(/[^0-9.]/g, '');
             
             // Permitir solo un punto decimal
@@ -89,7 +114,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Validar que el stock sea un número entero positivo
+    // --- Validar campos de STOCK ---
+    // Solo permitir números enteros positivos
     const inputsStock = document.querySelectorAll('input[name="stock"]');
     inputsStock.forEach(input => {
         input.addEventListener('input', function(e) {
@@ -98,36 +124,48 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Auto-submit en filtros de búsqueda
+    // --- Auto-envío en búsqueda ---
+    // Enviar el formulario automáticamente después de dejar de escribir
     const busquedaInput = document.querySelector('input[name="busqueda"]');
     if (busquedaInput) {
         let timeout;
         busquedaInput.addEventListener('input', function() {
             clearTimeout(timeout);
+            // Enviar después de 500ms de parar de escribir
             timeout = setTimeout(() => {
                 this.form.submit();
-            }, 500); // Buscar después de 500ms de parar de escribir
+            }, 500);
         });
     }
 });
 
-// Manejo de mensajes de éxito/error desde la URL
+// ============================================================================
+// MANEJO DE MENSAJES - Notificaciones de éxito/error desde la URL
+// ============================================================================
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Obtener parámetros de la URL
     const urlParams = new URLSearchParams(window.location.search);
     const mensaje = urlParams.get('mensaje');
-    const tipo = urlParams.get('tipo');
+    const tipo = urlParams.get('tipo'); // 'success' o 'error'
     
+    // Si hay mensaje, mostrar notificación
     if (mensaje && tipo) {
         mostrarNotificacion(mensaje, tipo);
         
-        // Limpiar la URL
+        // Limpiar los parámetros de la URL sin recargar la página
         const newUrl = window.location.href.split('?')[0];
         window.history.replaceState({}, document.title, newUrl);
     }
 });
 
-// Función para mostrar notificaciones temporales
+/**
+ * Muestra una notificación temporal en la pantalla
+ * @param {string} mensaje - Texto del mensaje a mostrar
+ * @param {string} tipo - Tipo de notificación ('success' o 'error')
+ */
 function mostrarNotificacion(mensaje, tipo) {
+    // Crear elemento de notificación
     const notificacion = document.createElement('div');
     notificacion.style.cssText = `
         position: fixed;
@@ -143,17 +181,19 @@ function mostrarNotificacion(mensaje, tipo) {
         animation: slideIn 0.3s ease-out;
     `;
     
+    // Definir estilos según el tipo de notificación
     if (tipo === 'success') {
-        notificacion.style.background = '#28a745';
+        notificacion.style.background = '#28a745'; // Verde
         notificacion.innerHTML = `✅ ${mensaje}`;
     } else if (tipo === 'error') {
-        notificacion.style.background = '#dc3545';
+        notificacion.style.background = '#dc3545'; // Rojo
         notificacion.innerHTML = `❌ ${mensaje}`;
     }
     
+    // Agregar notificación al DOM
     document.body.appendChild(notificacion);
     
-    // Remover después de 5 segundos
+    // Remover notificación después de 5 segundos con animación
     setTimeout(() => {
         notificacion.style.animation = 'slideOut 0.3s ease-in forwards';
         setTimeout(() => {
@@ -162,9 +202,14 @@ function mostrarNotificacion(mensaje, tipo) {
     }, 5000);
 }
 
-// Añadir estilos para las animaciones
+// ============================================================================
+// ANIMACIONES CSS - Estilos para las notificaciones
+// ============================================================================
+
+// Agregar estilos de animación al documento
 const style = document.createElement('style');
 style.textContent = `
+    /* Animación de entrada (deslizar desde la derecha) */
     @keyframes slideIn {
         from {
             transform: translateX(100%);
@@ -176,6 +221,7 @@ style.textContent = `
         }
     }
     
+    /* Animación de salida (deslizar hacia la derecha) */
     @keyframes slideOut {
         from {
             transform: translateX(0);

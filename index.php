@@ -1,47 +1,91 @@
 <?php
-require_once 'config.php';
-verificarLogin();
+// ============================================================================
+// PÁGINA PRINCIPAL - Dashboard e inventario de productos
+// ============================================================================
 
-// Obtener estadísticas del dashboard
+require_once 'config.php';
+verificarLogin(); // Verificar que el usuario esté autenticado
+
+// ============================================================================
+// OBTENCIÓN DE ESTADÍSTICAS
+// ============================================================================
+
+// Obtener conteos de productos (total, en stock, stock bajo, sin stock)
 $stats = obtenerEstadisticas();
 
-$busqueda = $_GET['busqueda'] ?? '';
-$categoria = $_GET['categoria'] ?? '';
-$estado_stock = $_GET['estado_stock'] ?? '';
+// ============================================================================
+// OBTENCIÓN DE PARÁMETROS DE FILTRADO
+// ============================================================================
 
-// Configuración de paginación
-$registrosPorPagina = 10; // Cantidad de productos a mostrar
+// Obtener parámetros GET para filtros
+$busqueda = $_GET['busqueda'] ?? ''; // Búsqueda por nombre/código
+$categoria = $_GET['categoria'] ?? ''; // Filtro por categoría
+$estado_stock = $_GET['estado_stock'] ?? ''; // Filtro por estado de stock
+
+// ============================================================================
+// CONFIGURACIÓN DE PAGINACIÓN
+// ============================================================================
+
+$registrosPorPagina = 10; // Cantidad de productos por página
 $paginaActual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
+
+// Validar que la página actual sea positiva
 if ($paginaActual < 1) $paginaActual = 1;
+
+// Calcular el índice de inicio para LIMIT
 $inicio = ($paginaActual - 1) * $registrosPorPagina;
 
-// Inicializar conexión a la base de datos
+// ============================================================================
+// CONEXIÓN A BASE DE DATOS
+// ============================================================================
+
+// Inicializar conexión PDO
 $pdo = conectarDB();
 
-// 1. Construir condiciones de filtro (Base común para contar y buscar)
+// ============================================================================
+// CONSTRUCCIÓN DE CONDICIONES DE FILTRO
+// ============================================================================
+
+// Inicializar condiciones SQL
 $condiciones = "WHERE 1=1";
 $params = [];
 
+// --- FILTRO: Búsqueda por nombre o código ---
 if (!empty($busqueda)) {
     $condiciones .= " AND (p.nombre LIKE ? OR p.codigo LIKE ?)";
     $params[] = "%$busqueda%";
     $params[] = "%$busqueda%";
 }
 
+// --- FILTRO: Categoría específica ---
 if (!empty($categoria)) {
     $condiciones .= " AND p.categoria_id = ?";
     $params[] = $categoria;
 }
 
+// --- FILTRO: Estado de stock ---
 if (!empty($estado_stock)) {
     switch ($estado_stock) {
-        case 'en_stock': $condiciones .= " AND p.stock >= 5"; break;
-        case 'stock_bajo': $condiciones .= " AND p.stock > 0 AND p.stock < 5"; break;
-        case 'sin_stock': $condiciones .= " AND p.stock = 0"; break;
+        case 'en_stock':
+            // Productos con 5 o más unidades
+            $condiciones .= " AND p.stock >= 5";
+            break;
+        case 'stock_bajo':
+            // Productos con 1-4 unidades
+            $condiciones .= " AND p.stock > 0 AND p.stock < 5";
+            break;
+        case 'sin_stock':
+            // Productos con 0 unidades
+            $condiciones .= " AND p.stock = 0";
+            break;
     }
 }
 
-// 2. PRIMERA CONSULTA: Contar el total de resultados (para saber cuántas páginas hay)
+// ============================================================================
+// CONSULTA 1: CONTAR TOTAL DE REGISTROS (para paginación)
+// ============================================================================
+
+// SQL para contar cuántos productos coinciden con los filtros
 $sqlTotal = "SELECT COUNT(*) as total FROM productos p $condiciones";
 $stmtTotal = $pdo->prepare($sqlTotal);
 $stmtTotal->execute($params);
@@ -50,20 +94,27 @@ $totalRegistros = $stmtTotal->fetch()['total'];
 // Calcular total de páginas (redondear hacia arriba)
 $totalPaginas = ceil($totalRegistros / $registrosPorPagina);
 
-// 3. SEGUNDA CONSULTA: Obtener SOLO los productos de esta página
-// Agregamos el LIMIT al final
+// ============================================================================
+// CONSULTA 2: OBTENER PRODUCTOS DE LA PÁGINA ACTUAL
+// ============================================================================
+
+// SQL para obtener solo los productos de esta página con LIMIT
 $sql = "SELECT p.*, c.nombre as categoria_nombre FROM productos p 
         LEFT JOIN categorias c ON p.categoria_id = c.id 
         $condiciones 
         ORDER BY p.codigo 
         LIMIT $inicio, $registrosPorPagina";
 
-// Ejecutar consulta y obtener productos
+// Preparar y ejecutar consulta
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $productos = $stmt->fetchAll();
 
-// Obtener lista de categorías para el filtro
+// ============================================================================
+// OBTENER CATEGORÍAS PARA SELECT DE FILTRO
+// ============================================================================
+
+// Consulta para obtener todas las categorías ordenadas
 $stmt = $pdo->query("SELECT * FROM categorias ORDER BY nombre");
 $categorias = $stmt->fetchAll();
 ?>
@@ -76,8 +127,11 @@ $categorias = $stmt->fetchAll();
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Barra de navegación superior -->
+    <!-- ====================================================================
+         BARRA DE NAVEGACIÓN SUPERIOR
+         ==================================================================== -->
     <div class="header">
+        <!-- Logo e información de la aplicación -->
         <div class="logo">
             <div class="logo-icon">C</div>
             <div>
@@ -85,65 +139,96 @@ $categorias = $stmt->fetchAll();
                 <div class="subtitle">Gestion de inventario de productos</div>
             </div>
         </div>  
+         <!-- Menú de usuario (botones y opciones) -->
          <div class="user-menu">
+            <!-- Nombre del usuario logueado -->
             <span class="user-info"><?php echo htmlspecialchars($_SESSION['usuario_nombre'] ?? 'usuario'); ?></span>
-            
+
+            <!-- Botón Gestionar Usuarios (solo si es admin) -->
             <?php if (isset($_SESSION['usuario_rol']) && $_SESSION['usuario_rol'] === 'admin'): ?>
                 <button class="btn btn-primary" onclick="abrirModalUsuarios()">
                     👥 Usuarios
                 </button>
             <?php endif; ?>
+            
+            <!-- Botón Gestionar Categorías -->
             <button class="btn btn-primary" onclick="abrirModalCategorias()">
                 📁 Categorías
             </button>
             
+            <!-- Botón Generar Reporte (descarga Excel) -->
             <a href="generar_reporte.php" class="btn btn-primary">
                 📊 Reporte
             </a>
             
+            <!-- Botón Agregar Nuevo Producto -->
             <button class="btn btn-primary" onclick="mostrarModalAgregar()">
                 + Producto
             </button>
             
+            <!-- Botón Cerrar Sesión -->
             <a href="logout.php" class="btn btn-outline">
                 Salir
             </a>
         </div>
     </div>
+    
+    <!-- ====================================================================
+         CONTENEDOR PRINCIPAL
+         ==================================================================== -->
     <div class="container">
-        <!-- Tarjetas de estadísticas -->
+        <!-- ================================================================
+             TARJETAS DE ESTADÍSTICAS (Dashboard)
+             ================================================================ -->
         <div class="dashboard-cards">
+            <!-- Tarjeta: Total de productos -->
             <div class="card card-total">
                 <div class="card-number"><?php echo $stats['total']; ?></div>
                 <div class="card-label">Total Productos</div>
             </div>
+            
+            <!-- Tarjeta: Productos en stock -->
             <div class="card card-en-stock">
                 <div class="card-number"><?php echo $stats['en_stock']; ?></div>
                 <div class="card-label">En Stock</div>
             </div>
+            
+            <!-- Tarjeta: Productos con stock bajo -->
             <div class="card card-stock-bajo">
                 <div class="card-number"><?php echo $stats['stock_bajo']; ?></div>
                 <div class="card-label">Stock Bajo</div>
             </div>
+            
+            <!-- Tarjeta: Productos sin stock -->
             <div class="card card-sin-stock">
                 <div class="card-number"><?php echo $stats['sin_stock']; ?></div>
                 <div class="card-label">Sin Stock</div>
             </div>
         </div>
 
-        <!-- Sección principal de contenido -->
+        <!-- ================================================================
+             SECCIÓN PRINCIPAL DE CONTENIDO
+             ================================================================ -->
         <div class="content-section">
-            <!-- Cabecera con título y filtros -->
+            <!-- ============================================================
+                 CABECERA CON TÍTULO Y FILTROS
+                 ============================================================ -->
             <div class="section-header">
+                <!-- Información del inventario -->
                 <div>
                     <h2 class="section-title">Inventario de Productos (<?php echo count($productos); ?>)</h2>
                     <p style="color: #666; font-size: 0.9rem;">Mostrando <?php echo count($productos); ?> de <?php echo $stats['total']; ?> productos</p>
                 </div>
+                
+                <!-- Formulario de filtros y búsqueda -->
                 <div class="filters">
                     <form method="GET" style="display: flex; gap: 1rem; align-items: center;">
+                        <!-- Input de búsqueda por nombre o código -->
                         <div class="search-box">
                             <input type="text" name="busqueda" placeholder="Buscar productos por nombre..." value="<?php echo htmlspecialchars($busqueda); ?>">
                         </div>
+                        
+                        <!-- Select de filtro por categoría -->
                         <select name="categoria" class="filter-select" onchange="this.form.submit()">
                             <option value="">Todas las categorías</option>
                             <?php foreach ($categorias as $cat): ?>
@@ -152,18 +237,24 @@ $categorias = $stmt->fetchAll();
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                        
+                        <!-- Select de filtro por estado de stock -->
                         <select name="estado_stock" class="filter-select" onchange="this.form.submit()">
                             <option value="">Todos los estados</option>
                             <option value="en_stock" <?php echo $estado_stock == 'en_stock' ? 'selected' : ''; ?>>En stock</option>
                             <option value="stock_bajo" <?php echo $estado_stock == 'stock_bajo' ? 'selected' : ''; ?>>Stock bajo</option>
                             <option value="sin_stock" <?php echo $estado_stock == 'sin_stock' ? 'selected' : ''; ?>>Sin stock</option>
                         </select>
+                        
+                        <!-- Botón enviar filtros -->
                         <button type="submit" class="btn btn-outline">Filtros</button>
                     </form>
                 </div>
             </div>
 
-            <!-- Tabla de productos -->
+            <!-- ============================================================
+                 TABLA DE PRODUCTOS
+                 ============================================================ -->
             <div class="table-container">
                 <table class="table">
                     <thead>
@@ -178,6 +269,7 @@ $categorias = $stmt->fetchAll();
                         </tr>
                     </thead>
                     <tbody>
+                        <!-- Mostrar productos o mensaje si no hay -->
                         <?php if (count($productos) > 0): ?>
                             <?php foreach ($productos as $producto): ?>
                                 <tr>
@@ -187,11 +279,13 @@ $categorias = $stmt->fetchAll();
                                     <td><?php echo $producto['stock']; ?></td>
                                     <td><?php echo htmlspecialchars($producto['categoria_nombre'] ?? 'Sin categoría'); ?></td>
                                     <td>
+                                        <!-- Badge con color según estado de stock -->
                                         <span class="estado <?php echo obtenerEstadoStock($producto['stock']); ?>">
                                             <?php echo obtenerTextoEstado($producto['stock']); ?>
                                         </span>
                                     </td>
                                     <td>
+                                        <!-- Botones de acciones (Editar/Eliminar) -->
                                         <div class="actions">
                                             <button class="btn-icon btn-edit" onclick="editarProducto(<?php echo $producto['id']; ?>)" title="Editar">
                                                 ✏️
@@ -204,50 +298,66 @@ $categorias = $stmt->fetchAll();
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
+                            <!-- Mensaje cuando no hay productos -->
                             <tr>
                                 <td colspan="7" style="text-align: center; color: #666;">No se encontraron productos.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
-                <?php if ($totalPaginas > 1): ?>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #eee;">
-                <div style="color: #666; font-size: 0.9rem;">
-                    Página <strong><?php echo $paginaActual; ?></strong> de <strong><?php echo $totalPaginas; ?></strong>
-                </div>
                 
-                <div style="display: flex; gap: 0.5rem;">
-                    <?php if ($paginaActual > 1): ?>
-                        <a href="?pagina=<?php echo $paginaActual - 1; ?>&busqueda=<?php echo urlencode($busqueda); ?>&categoria=<?php echo $categoria; ?>&estado_stock=<?php echo $estado_stock; ?>" 
-                           class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.9rem;">
-                           ← Anterior
-                        </a>
-                    <?php endif; ?>
+                <!-- ========================================================
+                     PAGINACIÓN
+                     ======================================================== -->
+                <?php if ($totalPaginas > 1): ?>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #eee;">
+                        <!-- Información de página actual -->
+                        <div style="color: #666; font-size: 0.9rem;">
+                            Página <strong><?php echo $paginaActual; ?></strong> de <strong><?php echo $totalPaginas; ?></strong>
+                        </div>
+                        
+                        <!-- Botones de navegación de páginas -->
+                        <div style="display: flex; gap: 0.5rem;">
+                            <!-- Botón Anterior -->
+                            <?php if ($paginaActual > 1): ?>
+                                <a href="?pagina=<?php echo $paginaActual - 1; ?>&busqueda=<?php echo urlencode($busqueda); ?>&categoria=<?php echo $categoria; ?>&estado_stock=<?php echo $estado_stock; ?>" 
+                                   class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.9rem;">
+                                   ← Anterior
+                                </a>
+                            <?php endif; ?>
 
-                    <?php for($i = 1; $i <= $totalPaginas; $i++): ?>
-                        <?php if ($i == $paginaActual || $i == 1 || $i == $totalPaginas || ($i >= $paginaActual - 1 && $i <= $paginaActual + 1)): ?>
-                            <a href="?pagina=<?php echo $i; ?>&busqueda=<?php echo urlencode($busqueda); ?>&categoria=<?php echo $categoria; ?>&estado_stock=<?php echo $estado_stock; ?>" 
-                               class="btn <?php echo $i == $paginaActual ? 'btn-primary' : 'btn-outline'; ?>" 
-                               style="padding: 0.4rem 0.8rem; font-size: 0.9rem; <?php echo $i == $paginaActual ? 'background: #667eea; border-color: #667eea;' : ''; ?>">
-                               <?php echo $i; ?>
-                            </a>
-                        <?php elseif ($i == $paginaActual - 2 || $i == $paginaActual + 2): ?>
-                            <span style="padding: 0.4rem; color: #999;">...</span>
-                        <?php endif; ?>
-                    <?php endfor; ?>
+                            <!-- Números de página (con lógica para mostrar puntos suspensivos) -->
+                            <?php for($i = 1; $i <= $totalPaginas; $i++): ?>
+                                <?php if ($i == $paginaActual || $i == 1 || $i == $totalPaginas || ($i >= $paginaActual - 1 && $i <= $paginaActual + 1)): ?>
+                                    <!-- Mostrar número de página -->
+                                    <a href="?pagina=<?php echo $i; ?>&busqueda=<?php echo urlencode($busqueda); ?>&categoria=<?php echo $categoria; ?>&estado_stock=<?php echo $estado_stock; ?>" 
+                                       class="btn <?php echo $i == $paginaActual ? 'btn-primary' : 'btn-outline'; ?>" 
+                                       style="padding: 0.4rem 0.8rem; font-size: 0.9rem; <?php echo $i == $paginaActual ? 'background: #667eea; border-color: #667eea;' : ''; ?>">
+                                       <?php echo $i; ?>
+                                    </a>
+                                <?php elseif ($i == $paginaActual - 2 || $i == $paginaActual + 2): ?>
+                                    <!-- Mostrar puntos suspensivos -->
+                                    <span style="padding: 0.4rem; color: #999;">...</span>
+                                <?php endif; ?>
+                            <?php endfor; ?>
 
-                    <?php if ($paginaActual < $totalPaginas): ?>
-                        <a href="?pagina=<?php echo $paginaActual + 1; ?>&busqueda=<?php echo urlencode($busqueda); ?>&categoria=<?php echo $categoria; ?>&estado_stock=<?php echo $estado_stock; ?>" 
-                           class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.9rem;">
-                           Siguiente →
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php endif; ?>
+                            <!-- Botón Siguiente -->
+                            <?php if ($paginaActual < $totalPaginas): ?>
+                                <a href="?pagina=<?php echo $paginaActual + 1; ?>&busqueda=<?php echo urlencode($busqueda); ?>&categoria=<?php echo $categoria; ?>&estado_stock=<?php echo $estado_stock; ?>" 
+                                   class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.9rem;">
+                                   Siguiente →
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
+
+    <!-- ====================================================================
+         MODALES - Diálogos para agregar, editar y eliminar productos
+         ==================================================================== -->
 
     <!-- Modal Agregar Producto -->
     <div class="modal" id="modalAgregar">
@@ -493,7 +603,9 @@ $categorias = $stmt->fetchAll();
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- ====================================================================
+         SCRIPTS - Cargar archivos JavaScript
+         ==================================================================== -->
     <script src="script.js"></script>
     <script src="categorias.js"></script>
     <script src="usuarios.js"></script>
