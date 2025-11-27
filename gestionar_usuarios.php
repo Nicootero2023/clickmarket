@@ -21,8 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         switch ($accion) {
             case 'listar':
-                // Obtener todos los usuarios
-                $stmt = $pdo->query("SELECT id, usuario, nombre_completo, email FROM usuarios ORDER BY usuario");
+                // Ahora traemos también el rol
+                $stmt = $pdo->query("SELECT id, usuario, nombre_completo, email, rol FROM usuarios ORDER BY usuario");
                 $usuarios = $stmt->fetchAll();
                 
                 echo json_encode([
@@ -33,29 +33,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'obtener':
                 $id = intval($_POST['id'] ?? 0);
-                
-                if ($id <= 0) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'ID de usuario invÃ¡lido'
-                    ]);
-                    exit;
-                }
-                
-                $stmt = $pdo->prepare("SELECT id, usuario, nombre_completo, email FROM usuarios WHERE id = ?");
+                // Traemos el rol para llenar el formulario de edición
+                $stmt = $pdo->prepare("SELECT id, usuario, nombre_completo, email, rol FROM usuarios WHERE id = ?");
                 $stmt->execute([$id]);
                 $usuario = $stmt->fetch();
                 
                 if ($usuario) {
-                    echo json_encode([
-                        'success' => true,
-                        'usuario' => $usuario
-                    ]);
+                    echo json_encode(['success' => true, 'usuario' => $usuario]);
                 } else {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'Usuario no encontrado'
-                    ]);
+                    echo json_encode(['success' => false, 'error' => 'Usuario no encontrado']);
                 }
                 break;
                 
@@ -64,54 +50,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $contrasena = trim($_POST['contrasena'] ?? '');
                 $nombre_completo = trim($_POST['nombre_completo'] ?? '');
                 $email = trim($_POST['email'] ?? '');
+                $rol = trim($_POST['rol'] ?? 'usuario'); // Recibimos el rol
                 
-                // Validaciones
                 if (empty($usuario) || empty($contrasena) || empty($nombre_completo) || empty($email)) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'Todos los campos son obligatorios'
-                    ]);
+                    echo json_encode(['success' => false, 'error' => 'Todos los campos son obligatorios']);
                     exit;
                 }
                 
-                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'El email no es vÃ¡lido'
-                    ]);
-                    exit;
-                }
-                
-                // Verificar si el usuario ya existe
-                $stmt = $pdo->prepare("SELECT id FROM usuarios WHERE usuario = ?");
-                $stmt->execute([$usuario]);
-                
+                // Validar duplicados (usuario o email)
+                $stmt = $pdo->prepare("SELECT id FROM usuarios WHERE usuario = ? OR email = ?");
+                $stmt->execute([$usuario, $email]);
                 if ($stmt->fetch()) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'El nombre de usuario ya estÃ¡ en uso'
-                    ]);
+                    echo json_encode(['success' => false, 'error' => 'El usuario o email ya existen']);
                     exit;
                 }
                 
-                // Verificar si el email ya existe
-                $stmt = $pdo->prepare("SELECT id FROM usuarios WHERE email = ?");
-                $stmt->execute([$email]);
+                // Encriptar contraseña
+                $passwordHash = password_hash($contrasena, PASSWORD_DEFAULT);
                 
-                if ($stmt->fetch()) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'El email ya estÃ¡ registrado'
-                    ]);
-                    exit;
-                }
-                
-                // Insertar nuevo usuario
-                $stmt = $pdo->prepare("INSERT INTO usuarios (usuario, contrasena, nombre_completo, email) VALUES (?, ?, ?, ?)");
-                $stmt->execute([$usuario, $contrasena, $nombre_completo, $email]);
+                // INSERTAR CON ROL
+                $stmt = $pdo->prepare("INSERT INTO usuarios (usuario, contrasena, nombre_completo, email, rol) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([$usuario, $passwordHash, $nombre_completo, $email, $rol]);
                 
                 echo json_encode([
-                    'success' => true,
+                    'success' => true, 
                     'mensaje' => 'Usuario agregado exitosamente',
                     'id' => $pdo->lastInsertId()
                 ]);
@@ -123,145 +85,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $nombre_completo = trim($_POST['nombre_completo'] ?? '');
                 $email = trim($_POST['email'] ?? '');
                 $contrasena = trim($_POST['contrasena'] ?? '');
+                $rol = trim($_POST['rol'] ?? 'usuario'); // Recibimos el rol
                 
-                // Validaciones
-                if ($id <= 0) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'ID de usuario invÃ¡lido'
-                    ]);
+                if ($id <= 0 || empty($usuario) || empty($nombre_completo) || empty($email)) {
+                    echo json_encode(['success' => false, 'error' => 'Datos incompletos']);
                     exit;
                 }
-                
-                if (empty($usuario) || empty($nombre_completo) || empty($email)) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'El usuario, nombre completo y email son obligatorios'
-                    ]);
-                    exit;
-                }
-                
-                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'El email no es vÃ¡lido'
-                    ]);
-                    exit;
-                }
-                
-                // Verificar que el usuario existe
-                $stmt = $pdo->prepare("SELECT id FROM usuarios WHERE id = ?");
-                $stmt->execute([$id]);
-                if (!$stmt->fetch()) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'El usuario no existe'
-                    ]);
-                    exit;
-                }
-                
-                // Verificar si el nombre de usuario ya existe (excepto el actual)
-                $stmt = $pdo->prepare("SELECT id FROM usuarios WHERE usuario = ? AND id != ?");
-                $stmt->execute([$usuario, $id]);
-                
-                if ($stmt->fetch()) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'El nombre de usuario ya estÃ¡ en uso'
-                    ]);
-                    exit;
-                }
-                
-                // Verificar si el email ya existe (excepto el actual)
-                $stmt = $pdo->prepare("SELECT id FROM usuarios WHERE email = ? AND id != ?");
-                $stmt->execute([$email, $id]);
-                
-                if ($stmt->fetch()) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'El email ya estÃ¡ registrado'
-                    ]);
+
+                // Evitar que un admin se quite permisos a sí mismo por error
+                if ($id == $_SESSION['usuario_id'] && $rol !== 'admin') {
+                    echo json_encode(['success' => false, 'error' => 'No puedes quitarte el rol de administrador a ti mismo']);
                     exit;
                 }
                 
                 // Actualizar usuario
                 if (!empty($contrasena)) {
-                    // Si se proporcionÃ³ una nueva contraseÃ±a, actualizarla tambiÃ©n
-                    $stmt = $pdo->prepare("UPDATE usuarios SET usuario = ?, nombre_completo = ?, email = ?, contrasena = ? WHERE id = ?");
-                    $stmt->execute([$usuario, $nombre_completo, $email, $contrasena, $id]);
+                    $passwordHash = password_hash($contrasena, PASSWORD_DEFAULT);
+                    // UPDATE CON ROL Y CONTRASEÑA
+                    $stmt = $pdo->prepare("UPDATE usuarios SET usuario = ?, nombre_completo = ?, email = ?, rol = ?, contrasena = ? WHERE id = ?");
+                    $stmt->execute([$usuario, $nombre_completo, $email, $rol, $passwordHash, $id]);
                 } else {
-                    // Si no se proporcionÃ³ contraseÃ±a, no actualizarla
-                    $stmt = $pdo->prepare("UPDATE usuarios SET usuario = ?, nombre_completo = ?, email = ? WHERE id = ?");
-                    $stmt->execute([$usuario, $nombre_completo, $email, $id]);
+                    // UPDATE CON ROL (SIN CONTRASEÑA)
+                    $stmt = $pdo->prepare("UPDATE usuarios SET usuario = ?, nombre_completo = ?, email = ?, rol = ? WHERE id = ?");
+                    $stmt->execute([$usuario, $nombre_completo, $email, $rol, $id]);
                 }
                 
-                echo json_encode([
-                    'success' => true,
-                    'mensaje' => 'Usuario actualizado exitosamente'
-                ]);
+                echo json_encode(['success' => true, 'mensaje' => 'Usuario actualizado exitosamente']);
                 break;
                 
             case 'eliminar':
                 $id = intval($_POST['id'] ?? 0);
-                
-                if ($id <= 0) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'ID de usuario invÃ¡lido'
-                    ]);
-                    exit;
-                }
-                
-                // No permitir eliminar el usuario actual
                 if ($id == $_SESSION['usuario_id']) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'No puedes eliminar tu propio usuario'
-                    ]);
+                    echo json_encode(['success' => false, 'error' => 'No puedes eliminar tu propio usuario']);
                     exit;
                 }
-                
-                // Verificar que el usuario existe
-                $stmt = $pdo->prepare("SELECT usuario FROM usuarios WHERE id = ?");
-                $stmt->execute([$id]);
-                $usuario = $stmt->fetch();
-                
-                if (!$usuario) {
-                    echo json_encode([
-                        'success' => false,
-                        'error' => 'El usuario no existe'
-                    ]);
-                    exit;
-                }
-                
-                // Eliminar el usuario
                 $stmt = $pdo->prepare("DELETE FROM usuarios WHERE id = ?");
                 $stmt->execute([$id]);
-                
-                echo json_encode([
-                    'success' => true,
-                    'mensaje' => "Usuario '{$usuario['usuario']}' eliminado exitosamente"
-                ]);
+                echo json_encode(['success' => true, 'mensaje' => "Usuario eliminado exitosamente"]);
                 break;
                 
             default:
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'AcciÃ³n no vÃ¡lida'
-                ]);
+                echo json_encode(['success' => false, 'error' => 'Acción no válida']);
                 break;
         }
     } catch (Exception $e) {
-        error_log("Error en gestionar_usuarios.php: " . $e->getMessage());
-        echo json_encode([
-            'success' => false,
-            'error' => 'Error interno del servidor: ' . $e->getMessage()
-        ]);
+        error_log("Error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'error' => 'Error interno: ' . $e->getMessage()]);
     }
-} else {
-    echo json_encode([
-        'success' => false,
-        'error' => 'MÃ©todo no permitido'
-    ]);
 }
 ?>

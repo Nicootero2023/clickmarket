@@ -524,34 +524,41 @@ $categorias = $stmt->fetchAll();
         </div>
     </div>
 
-    <!-- Modal Agregar Usuario -->
-    <div class="modal" id="modalAgregarUsuario">
+<div class="modal" id="modalAgregarUsuario">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
                 <h3 class="modal-title">Agregar Nuevo Usuario</h3>
                 <button class="modal-close" onclick="volverAListaUsuarios()">&times;</button>
             </div>
-            <p class="modal-description">Completa los campos para registrar un nuevo usuario.</p>
+            <p class="modal-description">Completa los campos para registrar un nuevo usuario y asignarle un rol.</p>
             
             <form id="formAgregarUsuario" onsubmit="agregarUsuario(event)">
                 <div class="form-group">
                     <label class="form-label">Nombre de Usuario</label>
-                    <input type="text" id="nuevoUsuario" class="form-input" placeholder="Ingresa el nombre de usuario" required>
+                    <input type="text" id="nuevoUsuario" class="form-input" placeholder="Ej: jlopez" required>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Contraseña</label>
-                    <input type="password" id="nuevaContrasena" class="form-input" placeholder="Ingresa la contraseña" required>
+                    <input type="password" id="nuevaContrasena" class="form-input" required>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Nombre Completo</label>
-                    <input type="text" id="nuevoNombreCompleto" class="form-input" placeholder="Ingresa el nombre completo" required>
+                    <input type="text" id="nuevoNombreCompleto" class="form-input" placeholder="Ej: Juan López" required>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Email</label>
-                    <input type="email" id="nuevoEmail" class="form-input" placeholder="correo@ejemplo.com" required>
+                    <input type="email" id="nuevoEmail" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Rol de Usuario</label>
+                    <select id="nuevoRol" class="form-select" required>
+                        <option value="usuario">Usuario Estándar (Solo inventario)</option>
+                        <option value="admin">Administrador (Acceso total)</option>
+                    </select>
                 </div>
                 
                 <div class="form-actions">
@@ -562,14 +569,12 @@ $categorias = $stmt->fetchAll();
         </div>
     </div>
 
-    <!-- Modal Editar Usuario -->
     <div class="modal" id="modalEditarUsuario">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
                 <h3 class="modal-title">Editar Usuario</h3>
                 <button class="modal-close" onclick="volverAListaUsuarios()">&times;</button>
             </div>
-            <p class="modal-description">Modifica la información del usuario. Deja la contraseña vacía si no deseas cambiarla.</p>
             
             <form id="formEditarUsuario" onsubmit="guardarEdicionUsuario(event)">
                 <input type="hidden" id="editarUsuarioId">
@@ -588,11 +593,18 @@ $categorias = $stmt->fetchAll();
                     <label class="form-label">Email</label>
                     <input type="email" id="editarUsuarioEmail" class="form-input" required>
                 </div>
+
+                <div class="form-group">
+                    <label class="form-label">Rol de Usuario</label>
+                    <select id="editarUsuarioRol" class="form-select" required>
+                        <option value="usuario">Usuario Estándar</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
                 
                 <div class="form-group">
                     <label class="form-label">Nueva Contraseña (opcional)</label>
                     <input type="password" id="editarUsuarioContrasena" class="form-input" placeholder="Dejar vacío para no cambiar">
-                    <small style="color: #666; font-size: 0.85rem;">Solo completa este campo si deseas cambiar la contraseña</small>
                 </div>
                 
                 <div class="form-actions">
