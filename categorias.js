@@ -115,6 +115,8 @@ function agregarCategoria(event) {
             nombreInput.value = '';
             // Recargar lista
             cargarCategorias();
+            // Actualizar desplegables de categorías en formularios
+            actualizarDesplegablesCategorias();
         } else {
             alert('Error: ' + data.error);
         }
@@ -188,4 +190,71 @@ function escapeHtml(text) {
         "'": '&#039;'
     };
     return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// ============================================================================
+// FUNCIONES AUXILIARES PARA ACTUALIZACIÓN DINÁMICA
+// ============================================================================
+
+/**
+ * Actualiza todos los selectores de categorías en la página sin recargar
+ */
+function actualizarDesplegablesCategorias() {
+    const formData = new FormData();
+    formData.append('accion', 'listar');
+    
+    fetch('gestionar_categorias.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const categorias = data.categorias;
+            
+            // 1. Selector del Modal Agregar Producto
+            const selectAgregar = document.querySelector('#formAgregar select[name="categoria_id"]');
+            if (selectAgregar) llenarSelect(selectAgregar, categorias, 'Selecciona una categoría');
+            
+            // 2. Selector del Modal Editar Producto
+            const selectEditar = document.getElementById('editarCategoria');
+            if (selectEditar) llenarSelect(selectEditar, categorias, 'Selecciona una categoría');
+            
+            // 3. Selector de Filtro Principal
+            const selectFiltro = document.querySelector('select[name="categoria"]');
+            if (selectFiltro) llenarSelect(selectFiltro, categorias, 'Todas las categorías');
+        }
+    })
+    .catch(error => console.error('Error al actualizar selectores:', error));
+}
+
+/**
+ * Llena un elemento <select> con las categorías proporcionadas
+ * @param {HTMLSelectElement} selectElement - El elemento select a llenar
+ * @param {Array} categorias - Lista de categorías
+ * @param {string} textoDefault - Texto para la opción por defecto
+ */
+function llenarSelect(selectElement, categorias, textoDefault) {
+    // Guardar el valor seleccionado actual para no perderlo si es posible
+    const valorActual = selectElement.value;
+    
+    // Limpiar opciones actuales
+    selectElement.innerHTML = '';
+    
+    // Agregar opción por defecto (placeholder)
+    const optionDefault = document.createElement('option');
+    optionDefault.value = '';
+    optionDefault.textContent = textoDefault;
+    selectElement.appendChild(optionDefault);
+    
+    // Agregar las categorías actualizadas
+    categorias.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat.id;
+        option.textContent = cat.nombre;
+        selectElement.appendChild(option);
+    });
+    
+    // Intentar restaurar la selección anterior (si la categoría aún existe)
+    selectElement.value = valorActual;
 }
