@@ -497,6 +497,28 @@ $categorias = $stmt->fetchAll();
             </div>
         </div>
     </div>
+    <div class="modal" id="modalEditarCategoria">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Editar Categoría</h3>
+                <button class="modal-close" onclick="volverAListaCategorias()">&times;</button>
+            </div>
+            
+            <form id="formEditarCategoria" onsubmit="guardarEdicionCategoria(event)">
+                <input type="hidden" id="editarCategoriaId">
+                
+                <div class="form-group">
+                    <label class="form-label">Nombre de la Categoría</label>
+                    <input type="text" id="editarCategoriaNombre" class="form-input" required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="volverAListaCategorias()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Actualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Modal Gestionar Usuarios -->
     <div class="modal" id="modalUsuarios">

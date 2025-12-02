@@ -94,6 +94,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'id' => $pdo->lastInsertId()
                 ]);
                 break;
+
+            // ================================================================
+            // ACCIÓN: EDITAR - Editar una categoría
+            // ================================================================
+
+                case 'editar':
+                $id = intval($_POST['id'] ?? 0);
+                $nombre = trim($_POST['nombre'] ?? '');
+                
+                if ($id <= 0) {
+                    echo json_encode(['success' => false, 'error' => 'ID inválido']);
+                    exit;
+                }
+                
+                if (empty($nombre)) {
+                    echo json_encode(['success' => false, 'error' => 'El nombre es obligatorio']);
+                    exit;
+                }
+                
+                // Verificar si ya existe otra categoría con ese nombre
+                $stmt = $pdo->prepare("SELECT id FROM categorias WHERE nombre = ? AND id != ?");
+                $stmt->execute([$nombre, $id]);
+                
+                if ($stmt->fetch()) {
+                    echo json_encode(['success' => false, 'error' => 'Ya existe otra categoría con ese nombre']);
+                    exit;
+                }
+                
+                // Actualizar
+                $stmt = $pdo->prepare("UPDATE categorias SET nombre = ? WHERE id = ?");
+                $stmt->execute([$nombre, $id]);
+                
+                echo json_encode([
+                    'success' => true,
+                    'mensaje' => 'Categoría actualizada exitosamente'
+                ]);
+                break;
                 
             // ================================================================
             // ACCIÓN: ELIMINAR - Borrar una categoría
