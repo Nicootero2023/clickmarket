@@ -152,7 +152,6 @@ function eliminarCategoria(id, nombre, productosCount) {
             mostrarNotificacion(data.mensaje, 'success');
             cargarCategorias();
             actualizarDesplegablesCategorias();
-            setTimeout(() => { window.location.reload(); }, 1500);
         } else {
             alert('Error: ' + data.error);
         }
