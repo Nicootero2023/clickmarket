@@ -1,7 +1,6 @@
 <?php
 require_once 'config.php';
 
-// Si ya está logueado, redirigir al dashboard
 if (usuarioLogueado()) {
     header('Location: index.php');
     exit;
@@ -16,17 +15,33 @@ if ($_POST) {
     if (!empty($usuario) && !empty($contrasena)) {
         $pdo = conectarDB();
         
-        // 1. Buscamos id, usuario y ROL
-        $stmt = $pdo->prepare("SELECT id, usuario, rol FROM usuarios WHERE usuario = ? AND contrasena = ?");
-        $stmt->execute([$usuario, $contrasena]);
+        // Buscamos al usuario (sin validar contraseña aún)
+        $stmt = $pdo->prepare("SELECT id, usuario, contrasena, rol FROM usuarios WHERE usuario = ?");
+        $stmt->execute([$usuario]);
         $usuarioEncontrado = $stmt->fetch();
         
+        $loginExitoso = false;
+
         if ($usuarioEncontrado) {
-            // 2. Guardamos todo en la sesión
+            // CASO 1: Verificar si es un Hash seguro (Usuarios Nuevos)
+            if (password_verify($contrasena, $usuarioEncontrado['contrasena'])) {
+                $loginExitoso = true;
+            } 
+            // CASO 2: Verificar si es texto plano (Usuario Viejo 'usuario123')
+            elseif ($contrasena === $usuarioEncontrado['contrasena']) {
+                $loginExitoso = true;
+                
+                // Opcional: Actualizarlo a Hash automáticamente para que sea seguro la próxima
+                $nuevoHash = password_hash($contrasena, PASSWORD_DEFAULT);
+                $stmtUpdate = $pdo->prepare("UPDATE usuarios SET contrasena = ? WHERE id = ?");
+                $stmtUpdate->execute([$nuevoHash, $usuarioEncontrado['id']]);
+            }
+        }
+
+        if ($loginExitoso) {
             $_SESSION['usuario_id'] = $usuarioEncontrado['id'];
             $_SESSION['usuario_nombre'] = $usuarioEncontrado['usuario'];
-            $_SESSION['usuario_rol'] = $usuarioEncontrado['rol']; // <--- ¡Perfecto!
-            
+            $_SESSION['usuario_rol'] = $usuarioEncontrado['rol'];
             header('Location: index.php');
             exit;
         } else {
