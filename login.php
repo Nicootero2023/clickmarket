@@ -16,24 +16,20 @@ if ($_POST) {
     if (!empty($usuario) && !empty($contrasena)) {
         $pdo = conectarDB();
         
-        // 1. Buscamos id, usuario, contrasena y rol
-        $stmt = $pdo->prepare("SELECT id, usuario, contrasena, rol FROM usuarios WHERE usuario = ?");
-        $stmt->execute([$usuario]);
+        // 1. Buscamos id, usuario y ROL
+        $stmt = $pdo->prepare("SELECT id, usuario, rol FROM usuarios WHERE usuario = ? AND contrasena = ?");
+        $stmt->execute([$usuario, $contrasena]);
         $usuarioEncontrado = $stmt->fetch();
         
-        // 2. VERIFICAMOS LA CONTRASEÑA (ESTO ES LO QUE FALTABA)
-        if ($usuarioEncontrado && password_verify($contrasena, $usuarioEncontrado['contrasena'])) {
-            
-            // Login correcto: Guardamos todo en la sesión
+        if ($usuarioEncontrado) {
+            // 2. Guardamos todo en la sesión
             $_SESSION['usuario_id'] = $usuarioEncontrado['id'];
             $_SESSION['usuario_nombre'] = $usuarioEncontrado['usuario'];
-            $_SESSION['usuario_rol'] = $usuarioEncontrado['rol'];
+            $_SESSION['usuario_rol'] = $usuarioEncontrado['rol']; // <--- ¡Perfecto!
             
             header('Location: index.php');
             exit;
-            
         } else {
-            // Usuario no existe O contraseña incorrecta
             $error = 'Usuario o contraseña incorrectos';
         }
     } else {
